@@ -235,3 +235,224 @@ $$
 
 <br>
 
+#### 2.3.3 重要属性components_
+
+在新的特征矩阵生成之前，我们无法知晓PCA都建立了怎样的新特征向量，新特征矩阵生成之后也不具有可读性，V(k,n)把这个矩阵保存在components_这个属性，可以通过人脸识别可视化推断提取的特征
+
+```python
+# 1.导入库和模块
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.datasets import fetch_lfw_people
+from sklearn.decomposition import PCA
+
+# 2.实例化数据集，探索数据
+
+#下载数据
+faces = fetch_lfw_people(min_faces_per_person=60)
+
+print(faces.data.shape) #(1348, 2914)
+#行是样本
+#列是样本相关的所有特征
+
+print(faces.images.shape) #(1348, 62, 47)
+#1348:矩阵中图像的个数
+#62:每个图像特征矩阵的行
+#47:每个图像特征矩阵的列
+
+# 3.画图，将原始矩阵可视化
+
+#准备画布
+fig, axes = plt.subplots(3,8 #fig是画布，axes的每一个图像是fig中每一个空格
+                         ,figsize=(8,4)
+                         ,subplot_kw={"xticks":[],"yticks":[]} #不要显示坐标轴
+                        )
+
+#填充图像
+for i, ax in enumerate(axes.flat): #enumerate惰性函数，将axes对象转化成一维进行遍历填充
+    ax.imshow(faces.images[i,:,:]
+              ,cmap="gray" #参数网址:https://matplotlib.org/tutorials/colors/colormaps.html
+             )
+
+# 4.建模降维，提取新特征空间矩阵
+pca = PCA(150).fit(faces.data) #sklearn在降维算法中只接受2维,2914与62*47一样，不需要分开去降维
+V = pca.components_ #V是新特征空间矩阵，相当于骨架
+V.shape
+
+# 5.将新特征空间矩阵可视化
+fig, axes = plt.subplots(3,8,figsize=(8,4),subplot_kw = {"xticks":[],"yticks":[]})
+for i, ax in enumerate(axes.flat):
+    ax.imshow(V[i,:].reshape(62,47),cmap="gray")
+#新特征空间里的特征向量们，大部分是"五官"和"亮度"相关的向量
+```
+
+<br>
+
+### 2.4 重要接口inverse_transform
+
+接口inverse_transform，可以将我们归一化，标准化，甚至做过哑变量的特征矩阵还原回原始数据中的特征矩阵
+
+```python
+# 1.导入库和模块
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.datasets import fetch_lfw_people
+from sklearn.decomposition import PCA
+
+# 2.实例化数据集，探索数据
+
+#下载数据
+faces = fetch_lfw_people(min_faces_per_person=60)
+
+print(faces.data.shape) #(1348, 2914)
+#行是样本
+#列是样本相关的所有特征
+
+print(faces.images.shape) #(1348, 62, 47)
+#1348:矩阵中图像的个数
+#62:每个图像特征矩阵的行
+#47:每个图像特征矩阵的列
+
+X = faces.data
+
+# 3.建模降维，获取降维后的特征矩阵
+pca = PCA(150)
+X_dr = pca.fit_transform(X)
+X_dr.shape
+
+# 4.将降维后矩阵用inverse_transform返回原空间
+X_inverse = pca.inverse_transform(X_dr)
+X_inverse.shape
+
+# 5.将特征矩阵X和X_inverse可视化
+fig, ax = plt.subplots(2,10,figsize=(10,2.5)
+                     ,subplot_kw={"xticks":[],"yticks":[]}
+                     )
+
+#现在我们的ax中是2行10列，第一行是原数据，第二行是inverse_transform后返回的数据
+#所以我们需要同时循环两份数据，即一次循环画一列上的两张图，而不是把ax拉平
+for i in range(10):
+    ax[0,i].imshow(faces.images[i,:,:],cmap="binary_r")
+    ax[1,i].imshow(X_inverse[i].reshape(62,47),cmap="binary_r")
+```
+
+##### 注:
+
+两组数据可视化后，由降维后再通过inverse_transform转换回原维度的数据画出的图像和原数据画的图像大致相似，但原数据的图像明显更加清晰。这说明，**inverse_transform并没有实现数据的完全逆转**。这是因为，在降维的时候，部分信息已经被舍弃了，X_dr中往往不会包含原数据100%的信息，所以在逆转的时候，即便维度升高，原数据中已经被舍弃的信息也不可能再回来了。所以，**降维不是完全可逆的**。Inverse_transform的功能，是基于X_dr中的**数据进行升维**，将数据重新映射到原数据所在的特征空间中，而**并非恢复**所有原有的数据。
+<br>
+
+#### 2.4.2 PCA做噪音过滤
+
+```python
+# 1.导入库和模块
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_digits
+from sklearn.decomposition import PCA
+
+# 2.导入数据并探索数据
+digits = load_digits()
+digits.data.shape #(1797, 64)
+
+# 3.定义画图函数
+def plot_digits(data):
+    fig, axes = plt.subplots(4,10,figsize=(10,4)
+                           ,subplot_kw = {"xticks":[],"yticks":[]}
+                           )
+    for i, ax in enumerate(axes.flat):
+        ax.imshow(data[i].reshape(8,8),cmap="binary")
+        
+plot_digits(digits.data)
+
+# 4.为数据加上噪音
+np.random.RandomState(42)
+
+#在指定的数据集中，随机抽取服从正态分布的数据
+#两个参数，分别是指定的数据集，和抽取出来的正太分布的方差
+noisy = np.random.normal(digits.data,2)
+plot_digits(noisy)
+
+# 5.降维
+pca = PCA(0.5).fit(noisy)
+X_dr = pca.transform(noisy)
+X_dr.shape #(1797, 6)
+
+# 6.逆转降维结果，实现降噪
+without_noise = pca.inverse_transform(X_dr)
+plot_digits(without_noise)
+```
+
+### 2.5 重要接口，参数和属性总结
+
+![010-重要接口，参数和属性总结](D:\Machine_Learning\sklearn\主成分分析PCA与奇异值分解SVD\images\010-重要接口，参数和属性总结.png)
+
+## 3 PCA对手写数字数据集的降维
+
+```python
+# 1.导入需要的模块和库
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier as RFC
+from sklearn.model_selection import cross_val_score
+
+# 2.导入数据，探索数据
+data = pd.read_csv('./datas/digit recognizor.csv')
+
+X = data.iloc[:,1:]
+y = data.iloc[:,0]
+
+X.shape
+
+# 3.画累计方差贡献率曲线，找最佳降维后维度的范围
+pca_line = PCA().fit(X)
+plt.figure(figsize=[20,5])
+plt.plot(np.cumsum(pca_line.explained_variance_ratio_))
+plt.xlabel("number of components after dimension reduction")
+plt.ylabel("cumulative explained variance ratio")
+plt.show()
+
+# 4.降维后维度的学习曲线，继续缩小最佳维度的范围
+score = []
+for i in range(1,101,10):
+    X_dr = PCA(i).fit_transform(X)
+    once = cross_val_score(RFC(n_estimators=10,random_state=0)
+                           ,X_dr,y,cv=5).mean()
+    score.append(once)
+plt.figure(figsize=[20,5])
+plt.plot(range(1,101,10),score)
+plt.show()
+
+# 5.细化学习曲线，找出降维后的最佳维度
+score = []
+for i in range(10,25):
+    X_dr = PCA(i).fit_transform(X)
+    once = cross_val_score(RFC(n_estimators=10,random_state=0),X_dr,y,cv=5).mean()
+    score.append(once)
+plt.figure(figsize=[20,5])
+plt.plot(range(10,25),score)
+plt.show()
+
+# 6.导入找出的最佳维度进行降维，查看模型效果
+X_dr = PCA(23).fit_transform(X)
+cross_val_score(RFC(n_estimators=100,random_state=0),X_dr,y,cv=5).mean()
+
+# 7.特征数量已经不足原来的3%，更换模型
+from sklearn.neighbors import KNeighborsClassifier as KNN
+cross_val_score(KNN(),X_dr,y,cv=5).mean()
+
+# 8.KNN的k值学习曲线
+score = []
+for i in range(10):
+    X_dr = PCA(23).fit_transform(X)
+    once = cross_val_score(KNN(i+1),X_dr,y,cv=5).mean()
+    score.append(once)
+plt.figure(figsize=[20,5])
+plt.plot(range(10),score)
+plt.show()
+```
+
