@@ -518,3 +518,147 @@ ans =
   -0.019444   0.188889  -0.102778
 ```
 
+### 四、数据绘制
+
+```octave
+#绘制折线
+>> t = [0:0.01:0.98];
+>> y1 = sin(2*pi*4*t);
+>> plot(t, y1);
+
+#hold on 在原来的图片上继续绘制
+>> y2 = cos(2*pi*4*t);
+>> hold on;
+>> plot(t, y2, 'r'); % ‘r’ 红色
+
+#添加标签
+>> xlabel('time')
+>> ylabel('value')
+>> legend('sin', 'cos') % 标识数据
+>> title('my plot') % 图片名称
+>> print -dpng 'myplot.png' % 保存图片到当前目录
+
+#将数据显示在不同的图片上
+>> figure(1);plot(t, y1);
+>> figure(2);plot(t, y2);
+
+#分割图像subplot(a, b, c), a,b 将图像分割为a * b 的图像，c控制使用第几个图像
+>> subplot(1,2,1)
+>> plot(t,y1)
+>> subplot(1,2,2)
+>> plot(t,y2)
+```
+
+### 五、控制语句
+
+```octave
+#for循环
+>> for i = 1 : 10,
+v(i) = 2^i;
+end;
+>> v
+v =
+
+      2
+      4
+      8
+     16
+     32
+     64
+    128
+    256
+    512
+   1024
+
+>> indics = 1:10;
+>> for i = indics,
+disp(i);
+end;
+ 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+ 10
+
+#while循环
+>> i = 1;
+>> while(i < 5),
+v(i) = 10;
+i++;
+end;
+>> v
+v =
+
+     10
+     10
+     10
+     10
+     32
+     64
+    128
+    256
+    512
+   1024
+
+#break
+>> i = 1;
+>> while true,
+v(i) = 999;
+i = i+1;
+if i == 6,
+  break;
+end;
+end;
+>> v
+v =
+
+    999
+    999
+    999
+    999
+    999
+     64
+    128
+    256
+    512
+   1024
+
+#if 语句
+>> if v(1) == 1,
+       disp('The value is one');
+   elseif v(1) == 2,
+       disp('The value is two');
+   else
+       disp('The value is not one or two.');
+   end;
+The value is two
+
+#函数定义 
+#创建文件以      .m     结尾
+function y = squareThisNumber(x)  % y是返回值
+
+y = x^2;
+>> squareThisNumber(5)
+ans =  25
+
+#添加搜索路径，让即使octave不在需要的路径下，也可以搜索到需要的文件
+>> addpath('路径')
+
+#函数返回多个值
+#函数定义
+　function [y1, y2] = squareAndCubeThisNumber(x)
+
+　y1 = x^2;
+　y2 = x^3;
+
+#使用
+>> [a, b] = squareAndCubeThisNumber(5)
+a =  25
+b =  125
+```
+
